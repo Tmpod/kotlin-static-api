@@ -1,0 +1,16 @@
+[versions]
+kotlin = "2.2.20"
+ksp = "2.3.4"
+poet = "2.2.0"
+
+[libraries]
+kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+kotlinPoet = { module = "com.squareup:kotlinpoet", version.ref = "poet" }
+kotlinPoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "poet" }
+
+[bundles]
+processor = ["ksp-api", "kotlinPoet", "kotlinPoet-ksp"]
+
+[plugins]
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
