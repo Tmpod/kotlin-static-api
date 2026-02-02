@@ -1,10 +1,7 @@
 package dev.tmpod.staticapi
 
 import com.google.devtools.ksp.processing.*
-import com.google.devtools.ksp.symbol.ClassKind
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -17,8 +14,14 @@ val SIMPLE_ANNOTATION_NAME = requireNotNull(StaticApi::class.simpleName) { "Coul
 val INTERNAL_ANNOTATION =
     AnnotationSpec.builder(ClassName("org.jetbrains.annotations", "ApiStatus", "Internal")).build()
 
-fun KSClassDeclaration.isInterface() =
-    classKind == ClassKind.INTERFACE
+val DELEGATE_KDOC =
+    """
+    Internal mutable delegate. Should be set during initialization.
+    
+    This property is marked [ApiStatus.Internal] to discourage direct access.
+    """.trimIndent()
+
+val KSAnnotation.fqn get() = annotationType.resolve().declaration.qualifiedName?.asString()
 
 class StaticApiProcessor(
     private val codeGenerator: CodeGenerator,
@@ -33,21 +36,18 @@ class StaticApiProcessor(
         }
 
     private fun KSClassDeclaration.processInterface() {
-        if (!isInterface()) {
+        if (classKind != ClassKind.INTERFACE) {
             logger.error("@${SIMPLE_ANNOTATION_NAME} can only be applied to interface declarations", this)
             return
         }
 
         val name = simpleName.asString()  // interface name
-        val annotation = annotations.find {
-            it.annotationType.resolve().declaration.qualifiedName?.asString() == FULL_ANNOTATION_NAME
-        }!!
+        val annotation = annotations.find { it.fqn == FULL_ANNOTATION_NAME }!!
 
         // Compute resulting object name
         var objectName = (annotation.arguments.first().value as? String) ?: return
         if (objectName.isBlank()) {
-            if (name.startsWith('I'))
-                objectName = name.substring(1)
+            if (name.startsWith('I')) objectName = name.substring(1)
             else {
                 logger.error(
                     "@${SIMPLE_ANNOTATION_NAME} must be applied to an interface named ISomething or be passed a specific name for the generated object.",
@@ -61,16 +61,10 @@ class StaticApiProcessor(
         val methods = collectInterfaceMethods()
         if (methods.isEmpty()) {
             logger.warn("No methods found in interface $name", this)
-            return
         }
 
         generateObject(objectName, methods)
     }
-
-    private fun KSClassDeclaration.findDelegatedInterface() =
-        superTypes.toList()
-            .mapNotNull { it.resolve().declaration as? KSClassDeclaration }
-            .firstOrNull { it.classKind == ClassKind.INTERFACE }
 
     private fun KSClassDeclaration.collectInterfaceMethods(): List<KSFunctionDeclaration> {
         // Get all declared functions
@@ -95,9 +89,8 @@ class StaticApiProcessor(
         objectName: String,
         methods: List<KSFunctionDeclaration>
     ) {
-
-        val fileSpec = FileSpec.builder(packageName.asString(), "${objectName}_IMPL")
-            .addType(
+        FileSpec.builder(packageName.asString(), "${objectName}_IMPL").run {
+            addType(
                 TypeSpec.objectBuilder(objectName).run {
                     addKdoc(docString ?: "API implementation of [${simpleName.asString()}]")
                     addProperty(createDelegateProperty())
@@ -107,9 +100,8 @@ class StaticApiProcessor(
                     build()
                 }
             )
-            .build()
-
-        fileSpec.writeTo(codeGenerator, Dependencies(aggregating = true, containingFile!!))
+            build()
+        }.writeTo(codeGenerator, Dependencies(aggregating = true, containingFile!!))
     }
 
     private fun KSClassDeclaration.createDelegateProperty() =
@@ -118,19 +110,11 @@ class StaticApiProcessor(
             addModifiers(KModifier.PUBLIC)
             addModifiers(KModifier.LATEINIT)
             addAnnotation(INTERNAL_ANNOTATION)
-            addKdoc(
-                """
-                Internal mutable delegate. Should be set during initialization.
-                
-                This property is marked [ApiStatus.Internal] to discourage direct access.
-                """.trimIndent()
-            )
+            addKdoc(DELEGATE_KDOC)
             build()
         }
 
-    private fun KSFunctionDeclaration.createForwardingMethod(
-//        typeParamResolver: TypeParameterResolver,
-    ): FunSpec {
+    private fun KSFunctionDeclaration.createForwardingMethod(): FunSpec {
         val methodName = simpleName.asString()
 
         return FunSpec.builder(methodName).run {
