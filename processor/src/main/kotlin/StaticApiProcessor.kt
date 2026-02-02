@@ -118,6 +118,7 @@ class StaticApiProcessor(
         val methodName = simpleName.asString()
 
         return FunSpec.builder(methodName).run {
+            docString?.let(::addKdoc)
             addAnnotation(JvmStatic::class)
 
             // Handle suspend functions
