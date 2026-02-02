@@ -72,3 +72,19 @@ object FooBar {
 ```
 
 You can then use it like `FooBar.makeFoo()` in both Java and Kotlin.
+
+## Motivation
+
+This was originally developed for Bukkit/Paper APIs written in Kotlin but provided/consumed by either Kotlin or Java.
+In this context, APIs are written on a separate module and then implemented by a plugin which is loaded as a (soft-)dependency to the consumers. The API module includes a class with either
+
+1. A static getter to the implementation instance
+2. Static methods that delegate to an underlying implementation instance.
+
+Personally, I dislike having to write `FooApi.getInstance().method()` or `FooApi.INSTANCE.method()`, it just adds visual noise and makes code harder to read and review, which pretty much discards option 1, leaving me with implementing delegating static methods.
+Fortunately, in Kotlin, we have class delegation, which helps reduce boilerplate code in a lot of cases. In short, you can make a class or object implement an interface by delegating all method implementations to an existing instance (e.g. top-level variable or class parameter).
+Unfortunately, however, while it works with objects, it doesn't work with [`@JvmStatic`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static) (which is Kotlin's way of making true static methods), meaning you have to write `FooApi.INSTANCE.method()` in Java (see [this SO thread](https://stackoverflow.com/a/50368401)). No can do.
+
+So, without other options, and considering I was curious about exploring Kotlin's metaprogramming more for a while, I ended up writing this small processor with KSP.
+The generated object doesn't implement the annotated interface because you cannot override with static methods. Still, the delegate is typed with it and all the methods and their doc comments are correctly ported over, making it quite seamless.
+
