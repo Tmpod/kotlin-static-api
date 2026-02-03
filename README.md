@@ -71,7 +71,7 @@ object FooBar {
 }
 ```
 
-You can then use it like `FooBar.makeFoo()` in both Java and Kotlin.
+You can then use initialize it with `FooBar.delegate = /* some impl */` and use it with `FooBar.makeFoo()` in both Java and Kotlin.
 
 ## Motivation
 
