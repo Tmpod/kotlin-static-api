@@ -88,3 +88,7 @@ Unfortunately, however, while it works with objects, it doesn't work with [`@Jvm
 So, without other options, and considering I was curious about exploring Kotlin's metaprogramming more for a while, I ended up writing this small processor with KSP.
 The generated object doesn't implement the annotated interface because you cannot override with static methods. Still, the delegate is typed with it and all the methods and their doc comments are correctly ported over, making it quite seamless.
 
+## License
+
+This repository's code is subject to the terms of the Mozilla Public License, v. 2.0.
+You can find the license's text [here](./LICENSE).
