@@ -45,6 +45,7 @@ Now, declare an interface for your API (and document it), then annotate it with 
 /**
  * API to work with foo and bar.
  */
+@StaticApi
 interface IFooBar {
     /** Makes a new foo. */
     fun makeFoo(): Foo
@@ -72,6 +73,7 @@ object FooBar {
 ```
 
 You can then use initialize it with `FooBar.delegate = /* some impl */` and use it with `FooBar.makeFoo()` in both Java and Kotlin.
+To customise the generated object's name, you can pass a string to the `objectName` parameter in `@StaticApi`; by default, it will try matching against an interface name like `IFoo`, and produce an object named just `Foo`.
 
 ## Motivation
 
