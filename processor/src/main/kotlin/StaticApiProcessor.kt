@@ -3,10 +3,7 @@ package dev.tmpod.staticapi
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
-import com.squareup.kotlinpoet.ksp.writeTo
+import com.squareup.kotlinpoet.ksp.*
 
 val FULL_ANNOTATION_NAME = requireNotNull(StaticApi::class.qualifiedName) { "Couldn't get annotation name!" }
 val SIMPLE_ANNOTATION_NAME = requireNotNull(StaticApi::class.simpleName) { "Couldn't get annotation name!" }
@@ -128,9 +125,7 @@ class StaticApiProcessor(
         return FunSpec.builder(methodName).run {
             docString?.let(::addKdoc)
             addAnnotation(JvmStatic::class)
-
-            // Handle suspend functions
-            if (modifiers.contains(KModifier.SUSPEND)) addModifiers(KModifier.SUSPEND)
+            addModifiers(this@createForwardingMethod.modifiers.mapNotNull { it.toKModifier() })
 
             // Add type parameters
             val typeParamResolver = typeParameters.toTypeParameterResolver()
