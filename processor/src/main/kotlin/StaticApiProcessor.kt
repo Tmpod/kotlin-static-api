@@ -23,6 +23,8 @@ val DELEGATE_KDOC =
 
 val KSAnnotation.fqn get() = annotationType.resolve().declaration.qualifiedName?.asString()
 
+val AUTO_NAME_REGEX = """^I[A-Z].*""".toRegex()
+
 class StaticApiProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger,
@@ -47,7 +49,7 @@ class StaticApiProcessor(
         // Compute resulting object name
         var objectName = (annotation.arguments.first().value as? String) ?: return
         if (objectName.isBlank()) {
-            if (name.startsWith('I')) objectName = name.substring(1)
+            if (name.matches(AUTO_NAME_REGEX)) objectName = name.substring(1)
             else {
                 logger.error(
                     "@${SIMPLE_ANNOTATION_NAME} must be applied to an interface named ISomething or be passed a specific name for the generated object.",
