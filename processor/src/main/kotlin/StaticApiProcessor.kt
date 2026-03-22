@@ -8,6 +8,9 @@ import com.squareup.kotlinpoet.ksp.*
 val FULL_ANNOTATION_NAME = requireNotNull(StaticApi::class.qualifiedName) { "Couldn't get annotation name!" }
 val SIMPLE_ANNOTATION_NAME = requireNotNull(StaticApi::class.simpleName) { "Couldn't get annotation name!" }
 
+val VOLATILE_ANNOTATION =
+    AnnotationSpec.builder(ClassName("kotlin.concurrent", "Volatile")).build()
+
 val INTERNAL_ANNOTATION =
     AnnotationSpec.builder(ClassName("org.jetbrains.annotations", "ApiStatus", "Internal")).build()
 
@@ -19,6 +22,9 @@ val DELEGATE_KDOC =
     """.trimIndent()
 
 val KSAnnotation.fqn get() = annotationType.resolve().declaration.qualifiedName?.asString()
+
+inline fun <reified T> List<KSValueArgument>.getArgValue(name: String): T? =
+    find { it.name?.getShortName() == name }?.value as? T
 
 val AUTO_NAME_REGEX = """^I[A-Z].*""".toRegex()
 
@@ -44,7 +50,7 @@ class StaticApiProcessor(
         val annotation = annotations.find { it.fqn == FULL_ANNOTATION_NAME }!!
 
         // Compute resulting object name
-        var objectName = (annotation.arguments.first().value as? String) ?: return
+        var objectName = annotation.arguments.getArgValue<String>("objectName") ?: return
         if (objectName.isBlank()) {
             if (name.matches(AUTO_NAME_REGEX)) objectName = name.substring(1)
             else {
@@ -56,7 +62,9 @@ class StaticApiProcessor(
             }
         }
 
-        val delegateName = annotation.arguments[1].value as String
+        val delegateName = annotation.arguments.getArgValue<String>("delegateName") ?: return
+        val volatileDelegate = annotation.arguments.getArgValue<Boolean>("volatileDelegate") ?: return
+
         // Get all methods from the interface to include in generated object
         val methods = collectInterfaceMethods()
         if (methods.isEmpty()) {
@@ -66,6 +74,7 @@ class StaticApiProcessor(
         generateObject(
             objectName = objectName,
             delegateName = delegateName,
+            volatileDelegate = volatileDelegate,
             methods = methods,
         )
     }
@@ -92,13 +101,14 @@ class StaticApiProcessor(
     private fun KSClassDeclaration.generateObject(
         objectName: String,
         delegateName: String,
+        volatileDelegate: Boolean,
         methods: List<KSFunctionDeclaration>
     ) {
         FileSpec.builder(packageName.asString(), "${objectName}_IMPL").run {
             addType(
                 TypeSpec.objectBuilder(objectName).run {
                     addKdoc(docString ?: "API implementation of [${simpleName.asString()}]")
-                    addProperty(createDelegateProperty(delegateName))
+                    addProperty(createDelegateProperty(delegateName, volatileDelegate))
                     methods.forEach { method ->
                         addFunction(method.createForwardingMethod(delegateName))
                     }
@@ -109,13 +119,17 @@ class StaticApiProcessor(
         }.writeTo(codeGenerator, Dependencies(aggregating = true, containingFile!!))
     }
 
-    private fun KSClassDeclaration.createDelegateProperty(name: String) =
+    private fun KSClassDeclaration.createDelegateProperty(name: String, volatile: Boolean) =
         PropertySpec.builder(name, toClassName()).run {
+            addKdoc(DELEGATE_KDOC)
+
             mutable(true)
             addModifiers(KModifier.PUBLIC)
             addModifiers(KModifier.LATEINIT)
+
             addAnnotation(INTERNAL_ANNOTATION)
-            addKdoc(DELEGATE_KDOC)
+            if (volatile) addAnnotation(VOLATILE_ANNOTATION)
+
             build()
         }
 

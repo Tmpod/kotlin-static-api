@@ -12,6 +12,9 @@ package dev.tmpod.staticapi
  * It is possible to customise the delegate field name with the [delegateName] argument
  * (defaults to `delegate`).
  *
+ * Setting [volatileDelegate] to true will make the delegate property be [Volatile]. This may be desired for highly
+ * concurrent scenarios.
+ *
  * **Note:** At the moment, this annotation does **not** support properties, only methods.
  *
  * Example:
@@ -32,4 +35,8 @@ package dev.tmpod.staticapi
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class StaticApi(val objectName: String = "", val delegateName: String = "delegate")
+annotation class StaticApi(
+    val objectName: String = "",
+    val delegateName: String = "delegate",
+    val volatileDelegate: Boolean = false,
+)
