@@ -16,7 +16,7 @@ val INTERNAL_ANNOTATION =
 
 val DELEGATE_KDOC =
     """
-    Internal mutable delegate. Should be set during initialization.
+    Internal mutable delegate. Should be set during the API provider's initialization.
     
     This property is marked [ApiStatus.Internal] to discourage direct access.
     """.trimIndent()
@@ -59,13 +59,18 @@ class StaticApiProcessor(
             }
         }
 
+        val delegateName = annotation.arguments[1].value as String
         // Get all methods from the interface to include in generated object
         val methods = collectInterfaceMethods()
         if (methods.isEmpty()) {
             logger.warn("No methods found in interface $name", this)
         }
 
-        generateObject(objectName, methods)
+        generateObject(
+            objectName = objectName,
+            delegateName = delegateName,
+            methods = methods,
+        )
     }
 
     private fun KSClassDeclaration.collectInterfaceMethods(): List<KSFunctionDeclaration> {
@@ -89,15 +94,16 @@ class StaticApiProcessor(
 
     private fun KSClassDeclaration.generateObject(
         objectName: String,
+        delegateName: String,
         methods: List<KSFunctionDeclaration>
     ) {
         FileSpec.builder(packageName.asString(), "${objectName}_IMPL").run {
             addType(
                 TypeSpec.objectBuilder(objectName).run {
                     addKdoc(docString ?: "API implementation of [${simpleName.asString()}]")
-                    addProperty(createDelegateProperty())
+                    addProperty(createDelegateProperty(delegateName))
                     methods.forEach { method ->
-                        addFunction(method.createForwardingMethod())
+                        addFunction(method.createForwardingMethod(delegateName))
                     }
                     build()
                 }
@@ -106,8 +112,8 @@ class StaticApiProcessor(
         }.writeTo(codeGenerator, Dependencies(aggregating = true, containingFile!!))
     }
 
-    private fun KSClassDeclaration.createDelegateProperty() =
-        PropertySpec.builder("delegate", toClassName()).run {
+    private fun KSClassDeclaration.createDelegateProperty(name: String) =
+        PropertySpec.builder(name, toClassName()).run {
             mutable(true)
             addModifiers(KModifier.PUBLIC)
             addModifiers(KModifier.LATEINIT)
@@ -116,7 +122,7 @@ class StaticApiProcessor(
             build()
         }
 
-    private fun KSFunctionDeclaration.createForwardingMethod(): FunSpec {
+    private fun KSFunctionDeclaration.createForwardingMethod(delegateName: String): FunSpec {
         val methodName = simpleName.asString()
 
         return FunSpec.builder(methodName).run {
@@ -157,9 +163,9 @@ class StaticApiProcessor(
             }
 
             if (returnType == UNIT) {
-                addStatement("delegate.%N($paramString)", methodName)
+                addStatement("$delegateName.%N($paramString)", methodName)
             } else {
-                addStatement("return delegate.%N($paramString)", methodName)
+                addStatement("return $delegateName.%N($paramString)", methodName)
             }
 
             build()

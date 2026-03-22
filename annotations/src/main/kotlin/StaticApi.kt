@@ -5,8 +5,12 @@ package dev.tmpod.staticapi
  *
  * This will generate the object with [JvmStatic] forwarding methods
  * and an internal mutable delegate that can be replaced if needed.
+ *
  * If the interface is named `IFoo`, the object will be named `Foo`.
  * If it isn't, you must provide a name with the [objectName] argument.
+ *
+ * It is possible to customise the delegate field name with the [delegateName] argument
+ * (defaults to `delegate`).
  *
  * **Note:** At the moment, this annotation does **not** support properties, only methods.
  *
@@ -28,4 +32,4 @@ package dev.tmpod.staticapi
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class StaticApi(val objectName: String = "")
+annotation class StaticApi(val objectName: String = "", val delegateName: String = "delegate")

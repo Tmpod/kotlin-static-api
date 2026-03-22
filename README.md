@@ -74,6 +74,7 @@ object FooBar {
 
 You can then use initialize it with `FooBar.delegate = /* some impl */` and use it with `FooBar.makeFoo()` in both Java and Kotlin.
 To customise the generated object's name, you can pass a string to the `objectName` parameter in `@StaticApi`; by default, it will try matching against an interface name like `IFoo`, and produce an object named just `Foo`.
+It is also possible to customise the delegate property's name through `delegateName` and whether it is volatile or not through `volatileDelegate`.
 
 ## Motivation
 
