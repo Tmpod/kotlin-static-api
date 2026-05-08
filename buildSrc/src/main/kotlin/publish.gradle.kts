@@ -17,5 +17,6 @@ publishing {
 
     repositories {
         mavenLocal()
+        vl(project, private = Meta.isPrivate, snapshots = Meta.isSnapshot)
     }
 }
