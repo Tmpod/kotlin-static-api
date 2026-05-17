@@ -4,12 +4,10 @@ import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.*
+import kotlin.concurrent.Volatile
 
 val FULL_ANNOTATION_NAME = requireNotNull(StaticApi::class.qualifiedName) { "Couldn't get annotation name!" }
 val SIMPLE_ANNOTATION_NAME = requireNotNull(StaticApi::class.simpleName) { "Couldn't get annotation name!" }
-
-val VOLATILE_ANNOTATION =
-    AnnotationSpec.builder(ClassName("kotlin.concurrent", "Volatile")).build()
 
 val INTERNAL_ANNOTATION =
     AnnotationSpec.builder(ClassName("org.jetbrains.annotations", "ApiStatus", "Internal")).build()
@@ -123,12 +121,12 @@ class StaticApiProcessor(
         PropertySpec.builder(name, toClassName()).run {
             addKdoc(DELEGATE_KDOC)
 
-            mutable(true)
+            addAnnotation(INTERNAL_ANNOTATION)
+            if (volatile) addAnnotation(Volatile::class)
+
             addModifiers(KModifier.PUBLIC)
             addModifiers(KModifier.LATEINIT)
-
-            addAnnotation(INTERNAL_ANNOTATION)
-            if (volatile) addAnnotation(VOLATILE_ANNOTATION)
+            mutable(true)
 
             build()
         }
