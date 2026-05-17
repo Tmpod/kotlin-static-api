@@ -83,14 +83,6 @@ class StaticApiProcessor(
             .filter { it.parentDeclaration == this }
             .toMutableList()
 
-        // Recursively get methods from super interfaces
-        superTypes
-            .mapNotNull { it.resolve().declaration as? KSClassDeclaration }
-            .filter { it.classKind == ClassKind.INTERFACE }
-            .forEach { superInterface ->
-                methods.addAll(superInterface.collectInterfaceMethods())
-            }
-
         return methods.distinctBy {
             it.simpleName.asString() + it.parameters.map { p -> p.type.resolve() }
         }
@@ -107,9 +99,7 @@ class StaticApiProcessor(
                 TypeSpec.objectBuilder(objectName).run {
                     addKdoc(docString ?: "API implementation of [${simpleName.asString()}]")
                     addProperty(createDelegateProperty(delegateName, volatileDelegate))
-                    methods.forEach { method ->
-                        addFunction(method.createForwardingMethod(delegateName))
-                    }
+                    methods.forEach { addFunction(it.createForwardingMethod(delegateName)) }
                     build()
                 }
             )
