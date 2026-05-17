@@ -132,12 +132,13 @@ class StaticApiProcessor(
         }
 
     private fun KSFunctionDeclaration.createForwardingMethod(delegateName: String): FunSpec {
+        val method = this
         val methodName = simpleName.asString()
 
         return FunSpec.builder(methodName).run {
             docString?.let(::addKdoc)
             addAnnotation(JvmStatic::class)
-            addModifiers(this@createForwardingMethod.modifiers.mapNotNull { it.toKModifier() })
+            addModifiers(method.modifiers.filter { it != Modifier.ABSTRACT }.mapNotNull { it.toKModifier() })
 
             // Add type parameters
             val typeParamResolver = typeParameters.toTypeParameterResolver()
@@ -151,10 +152,16 @@ class StaticApiProcessor(
             }
 
             // Add parameters
-            val params = this@createForwardingMethod.parameters
+            val params = method.parameters
             params.forEach { param ->
-                ParameterSpec.builder(param.name!!.asString(), param.type.toTypeName(typeParamResolver))
-                    .apply { if (param.isVararg) addModifiers(KModifier.VARARG) }
+                val name = param.name!!.asString()
+                val type = param.type.toTypeName(typeParamResolver)
+                ParameterSpec.builder(name, type)
+                    .apply {
+                        if (param.isVararg) addModifiers(KModifier.VARARG)
+                        // TODO: see what we can do about supporting default parameter values
+                        // if (param.hasDefault) defaultValue(...)
+                    }
                     .build()
                     .let(::addParameter)
             }
